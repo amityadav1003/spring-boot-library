@@ -30,7 +30,8 @@ public class ReviewService {
         Review review = new Review();
         review.setBookId(reviewRequest.getBookId());
         if(reviewRequest.getReviewDescription().isPresent()){
-            review.setReviewDescription(reviewRequest.getReviewDescription().toString());
+            String reviewCurrent = reviewRequest.getReviewDescription().orElse(null);
+            review.setReviewDescription(reviewCurrent);
         }
         review.setRating(reviewRequest.getRating());
         review.setUserEmail(userEmail);
