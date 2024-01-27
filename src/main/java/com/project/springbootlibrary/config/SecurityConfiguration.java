@@ -32,21 +32,18 @@ public class SecurityConfiguration {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http)  throws Exception{
         //Disable Cross Site forgery
-        http.csrf(csrf -> csrf.disable()).
+        http.csrf(httpSecurityCsrfConfigurer -> httpSecurityCsrfConfigurer.disable()).
         //Protect endpoints at /api/<type>/secure
         authorizeHttpRequests(configurer ->
-                configurer.requestMatchers("/api/**").permitAll())
-//                                "books/secure/**").permitAll()
-                                //in future if authentication works fine we have to add /api/reviews/secure/** as our requeste matcher
-//                        .requestMatchers("/api/books/**").permitAll()
-//                        .requestMatchers("/api/reviews/**").permitAll())
-                .oauth2ResourceServer(oauth2 -> oauth2.jwt());
+                configurer.requestMatchers("/api/**").permitAll().anyRequest().authenticated())
 
 
-        http.cors();
+                .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()));
+
+//        http.cors(Customizer.withDefaults());
 
         //Add content negotiation strategy
-        http.setSharedObject(ContentNegotiationStrategy.class , new HeaderContentNegotiationStrategy());
+//        http.setSharedObject(ContentNegotiationStrategy.class , new HeaderContentNegotiationStrategy());
 
         //Force a non-empty response Body for 401's to make the response friendly
 //        Okta.configureResourceServer401ResponseBody(http);
