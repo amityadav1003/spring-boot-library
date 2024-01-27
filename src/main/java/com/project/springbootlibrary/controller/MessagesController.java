@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import javax.naming.ldap.ExtendedRequest;
 
 
-@CrossOrigin("http://localhost:3000")
+@CrossOrigin("https://localhost:3000")
 @RestController
 @RequestMapping("/api/messages")
 public class MessagesController {

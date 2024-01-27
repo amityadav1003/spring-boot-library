@@ -7,11 +7,6 @@ import lombok.Data;
 @Table(name = "checkout")
 @Data
 public class Checkout {
-
-
-
-
-
     public Checkout(String userEmail , String checkoutDate , String returnedDate , Long bookId){
         this.userEmail = userEmail;
         this.checkoutDate = checkoutDate;
