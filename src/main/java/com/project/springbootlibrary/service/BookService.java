@@ -3,12 +3,16 @@ package com.project.springbootlibrary.service;
 import com.project.springbootlibrary.Dao.BookDao;
 import com.project.springbootlibrary.Dao.CheckoutDao;
 import com.project.springbootlibrary.Dao.HistoryRepository;
+import com.project.springbootlibrary.Dao.PaymentRepository;
 import com.project.springbootlibrary.entity.Book;
 import com.project.springbootlibrary.entity.Checkout;
 import com.project.springbootlibrary.entity.History;
+import com.project.springbootlibrary.entity.Payment;
 import com.project.springbootlibrary.responsemodals.ShelfCurrentLoansResponse;
+import com.stripe.model.PaymentIntent;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.parameters.P;
 import org.springframework.stereotype.Service;
 
 import java.sql.Time;
@@ -26,11 +30,14 @@ public class BookService {
 
     private CheckoutDao checkoutDao;
     private HistoryRepository historyRepository;
+
+    private PaymentRepository paymentRepository;
     @Autowired
-    BookService(BookDao bookDao , CheckoutDao checkoutDao , HistoryRepository historyRepository) {
+    BookService(BookDao bookDao , CheckoutDao checkoutDao , HistoryRepository historyRepository , PaymentRepository paymentRepository) {
         this.bookDao = bookDao;
         this.checkoutDao = checkoutDao;
         this.historyRepository = historyRepository;
+        this.paymentRepository = paymentRepository;
     }
 
     public Book checkoutBook(String userEmail , Long bookId) throws Exception{
@@ -40,6 +47,30 @@ public class BookService {
 
         if(!book.isPresent() || validateCheckout!=null || book.get().getCopiesAvailable() <= 0){
             throw new Exception("Book Doesn't exists or its already checked out by User");
+        }
+        List<Checkout> currentBooksCheckout = checkoutDao.findBookByUserEmail(userEmail);
+        boolean bookNeedsReturned = false;
+
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        for(Checkout checkout : currentBooksCheckout){
+            Date d1 = sdf.parse(checkout.getReturnedDate());
+            Date d2 = sdf.parse(LocalDate.now().toString());
+            TimeUnit time = TimeUnit.DAYS;
+            double timeUnitDifference = time.convert(d1.getTime() - d2.getTime() , TimeUnit.MILLISECONDS);
+            if (timeUnitDifference < 0){
+                bookNeedsReturned = true;
+                break;
+            }
+        }
+        Payment userPayment = paymentRepository.findByUserEmail(userEmail);
+        if(userPayment!=null && userPayment.getAmount() > 0 || userPayment!=null && bookNeedsReturned ){
+            throw  new Exception("OutStanding Fees");
+        }
+        if(userPayment == null){
+            Payment payment = new Payment();
+            payment.setAmount(0.00);
+            payment.setUserEmail(userEmail);
+            paymentRepository.save(payment);
         }
         book.get().setCopiesAvailable(book.get().getCopiesAvailable() - 1);
         bookDao.save(book.get());
@@ -92,6 +123,18 @@ public class BookService {
         }
         book.get().setCopiesAvailable(book.get().getCopiesAvailable() + 1);
         bookDao.save(book.get());
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        Date d1 = sdf.parse(validateCheckout.getReturnedDate());
+        Date d2 = sdf.parse(LocalDate.now().toString());
+
+        TimeUnit time = TimeUnit.DAYS;
+
+        double differenceInTime = time.convert(d2.getTime() - d1.getTime() , TimeUnit.MILLISECONDS);
+        if(differenceInTime < 0 ){
+            Payment payment = paymentRepository.findByUserEmail(userEmail);
+            payment.setAmount(payment.getAmount() + (differenceInTime * -1));
+            paymentRepository.save(payment);
+        }
         checkoutDao.deleteById(validateCheckout.getId());
         History history = new History(
                 userEmail, validateCheckout.getCheckoutDate() , LocalDate.now().toString(),book.get().getTitle() , book.get().getAuthor(),book.get().getDescription(),

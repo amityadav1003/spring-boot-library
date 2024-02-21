@@ -5,6 +5,7 @@ import com.project.springbootlibrary.responsemodals.ShelfCurrentLoansResponse;
 import com.project.springbootlibrary.service.BookService;
 import com.project.springbootlibrary.utils.ExtractJWT;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.hateoas.mediatype.alps.Ext;
 import org.springframework.web.bind.annotation.*;
 
@@ -40,6 +41,7 @@ token) throws Exception{
     }
 
     @GetMapping("/secure/currentloans/count")
+    @Cacheable
     public int currentLoansCount(@RequestHeader(value = "Authorization") String token){
         String userEmail = ExtractJWT.payloadJWTExtraction(token , "\"sub\"");
         return bookService.currentLoansCount(userEmail);
